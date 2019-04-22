@@ -1,0 +1,49 @@
+Liblog is a very fast low-overhead logger targeted at developers.
+It is not meant for customer use.
+
+Liblog is a tiny daemon which maintains a small shared memory segment
+to which your application writes it's messages.  When you need a copy
+of the messages you need but run "killall -USR1 lldump" and the shared
+memory segment will be written to disk.  New messages overwrite old
+ones when the log buffer fills up.  The messages can then be extracted
+with the llcat utility.
+
+The interface is very simple.  Logging is initiated with a call to
+ll_open(), there are two arguments, the minimum logging level and the
+size of the shared memory buffer.  Log levels are defined in liblog.h.
+ll_open creates the shared memory segment and starts the daemon.  It
+returns 0 on success, -1 on failure.  One writes to the log with calls
+to ll_log(), the arguments are the level, a printf style format
+string, and a variable number of arguments.  When you're done you
+terminate logging with ll_close() which flushes the buffer to disk and
+frees the shared memory segment.
+
+Because the shared memory segment has a header in front of your
+messages and the messages are not necessarily in order a small utility
+is provided to examine the messages, it is called llcat and it takes
+one argument, the name of the logfile to be displayed.
+
+It's usage might look something like this:
+
+#include <liblog.h>
+int
+main(int argc, char **argv)
+{
+   if (debug) {
+      /* log warnings and above, keep last 16k */
+      if (ll_open(LL_LVL_WARN, 16*1024) == -1) {
+         (void)fprintf(stderr, "failed to open liblog\n");
+         return 1;
+      }
+   }
+   ...
+   /* log anything above debug */
+   (void)ll_setlevel(LL_LVL_DBG);
+   if (debug) {
+      ll_log(LL_LVL_NOTE, "i: %d str: %s\n, i, s);
+   }
+   ...
+   /* this also flushes to disk */
+   ll_close();
+   return 0;
+}
